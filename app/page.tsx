@@ -147,7 +147,14 @@ function ProjectCard({
       </div>
 
       <div className="stats">
-        <div className="stat"><b>{fmtDate(new Date(project.target_date + "T12:00:00"))}</b><span>Data alvo</span></div>
+        <div className="stat">
+          <input
+            type="date"
+            value={project.target_date}
+            onChange={(e) => e.target.value && run(updateDoc(doc(db, "projects", project.id), { target_date: e.target.value }))}
+          />
+          <span>Data alvo (editável)</span>
+        </div>
         <div className="stat"><b>{Math.max(Math.ceil(s.daysLeft), 0)} dias</b><span>Restantes até o prazo</span></div>
         <div className="stat"><b>{fmtDur(s.remMinutes)}</b><span>Impressão restante (total)</span></div>
         <div className="stat"><b>{s.remaining ? fmtDate(s.eta) : "—"}</b><span>Previsão de término</span></div>
@@ -162,22 +169,11 @@ function ProjectCard({
 
       <table>
         <thead>
-          <tr><th>Item</th><th>Feitas</th><th>Qtd</th><th>Tempo/un</th><th>Filamento/un</th><th></th></tr>
+          <tr><th>Item</th><th>Feitas</th><th>Qtd</th><th>Tempo/un (h · min)</th><th>Filamento/un (g)</th><th></th></tr>
         </thead>
         <tbody>
           {items.map((i) => (
-            <tr key={i.id}>
-              <td>{i.name}</td>
-              <td>
-                <button className="ghost sm" onClick={() => i.printed > 0 && run(updateDoc(doc(db, "items", i.id), { printed: increment(-1) }))}>−</button>{" "}
-                {i.printed}{" "}
-                <button className="sm" onClick={() => i.printed < i.quantity && run(updateDoc(doc(db, "items", i.id), { printed: increment(1) }))}>+</button>
-              </td>
-              <td>{i.quantity}</td>
-              <td>{fmtDur(i.print_minutes)}</td>
-              <td>{i.filament_g} g</td>
-              <td><button className="ghost sm" onClick={() => run(deleteDoc(doc(db, "items", i.id)))}>×</button></td>
-            </tr>
+            <ItemRow key={i.id} item={i} run={run} />
           ))}
         </tbody>
       </table>
@@ -249,4 +245,69 @@ async function deleteProject(id: string) {
   its.forEach((d) => batch.delete(d.ref));
   batch.delete(doc(db, "projects", id));
   await batch.commit();
+}
+
+// linha editável: os campos salvam ao sair (blur); a key remonta o campo quando o valor muda no banco
+function ItemRow({ item: i, run }: { item: Item; run: Run }) {
+  const ref = doc(db, "items", i.id);
+  const save = (data: Record<string, unknown>) => run(updateDoc(ref, data));
+  const h = Math.floor(i.print_minutes / 60);
+  const m = i.print_minutes % 60;
+
+  const saveTime = (hh: number, mm: number) => {
+    const total = Math.max(0, hh) * 60 + Math.max(0, mm);
+    if (total > 0 && total !== i.print_minutes) save({ print_minutes: total });
+  };
+
+  return (
+    <tr>
+      <td>
+        <input
+          key={"n" + i.name}
+          className="w"
+          defaultValue={i.name}
+          onBlur={(e) => e.target.value.trim() && e.target.value.trim() !== i.name && save({ name: e.target.value.trim() })}
+        />
+      </td>
+      <td>
+        <button className="ghost sm" onClick={() => i.printed > 0 && save({ printed: increment(-1) })}>−</button>{" "}
+        {i.printed}{" "}
+        <button className="sm" onClick={() => i.printed < i.quantity && save({ printed: increment(1) })}>+</button>
+      </td>
+      <td>
+        <input
+          key={"q" + i.quantity}
+          className="num"
+          type="number"
+          min={1}
+          defaultValue={i.quantity}
+          onBlur={(e) => {
+            const q = Math.floor(Number(e.target.value));
+            if (q >= 1 && q !== i.quantity) save({ quantity: q, printed: Math.min(i.printed, q) });
+          }}
+        />
+      </td>
+      <td>
+        <div className="row" style={{ flexWrap: "nowrap" }}>
+          <input key={"h" + h} className="num" type="number" min={0} defaultValue={h} onBlur={(e) => saveTime(Number(e.target.value), m)} />
+          <input key={"m" + m} className="num" type="number" min={0} max={59} defaultValue={m} onBlur={(e) => saveTime(h, Number(e.target.value))} />
+        </div>
+      </td>
+      <td>
+        <input
+          key={"f" + i.filament_g}
+          className="num"
+          type="number"
+          min={0}
+          step="0.1"
+          defaultValue={i.filament_g}
+          onBlur={(e) => {
+            const f = Number(e.target.value);
+            if (f >= 0 && f !== i.filament_g) save({ filament_g: f });
+          }}
+        />
+      </td>
+      <td><button className="ghost sm" onClick={() => run(deleteDoc(ref))}>×</button></td>
+    </tr>
+  );
 }
