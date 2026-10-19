@@ -1,0 +1,9 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // App sem login: acesso aberto. Restrinja (ex.: Firebase Auth) antes de publicar.
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

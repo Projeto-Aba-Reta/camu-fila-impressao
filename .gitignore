@@ -1,0 +1,26 @@
+# dependências
+node_modules
+
+# next.js
+.next
+out
+next-env.d.ts
+*.tsbuildinfo
+
+# variáveis de ambiente (mantém só o exemplo)
+.env
+.env.*
+!.env.local.example
+
+# firebase
+.firebase
+firebase-debug.log*
+
+# logs
+npm-debug.log*
+
+# sistema / editor
+.DS_Store
+Thumbs.db
+.vscode
+.idea
