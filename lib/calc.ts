@@ -20,22 +20,26 @@ export function summarize(p: Project, items: Item[], s: Settings, now = new Date
   const remMinutes = items.reduce((a, i) => a + left(i) * i.print_minutes, 0);
   const remFilament = items.reduce((a, i) => a + left(i) * i.filament_g, 0);
 
-  // dias de produção necessários, dividindo o trabalho entre as impressoras
-  const workDays = remMinutes / 60 / s.printers / s.hours_per_day;
+  // horas de impressão por impressora (o trabalho é dividido entre as impressoras)
+  const neededHours = remMinutes / 60 / s.printers;
+  const workDays = neededHours / s.hours_per_day;
 
-  const target = new Date(p.target_date + "T23:59:59");
+  // o dia da data alvo não conta como dia de produção: o prazo vence no início dele
+  const target = new Date(p.target_date + "T00:00:00");
   const daysLeft = (target.getTime() - now.getTime()) / 86400000;
+  // horas úteis de impressão disponíveis por impressora até o prazo
+  const availableHours = Math.max(daysLeft, 0) * s.hours_per_day;
   const eta = new Date(now.getTime() + workDays * 86400000);
-  const slackDays = daysLeft - workDays;
+  const slackHours = availableHours - neededHours;
 
   let status: Status = "ok";
   if (remaining === 0) status = "done";
-  else if (slackDays < 0) status = "late";
-  else if (slackDays < Math.max(1, workDays * 0.2)) status = "risk";
+  else if (slackHours < 0) status = "late";
+  else if (slackHours < Math.max(s.hours_per_day, neededHours * 0.2)) status = "risk";
 
   const perDayNeeded = remaining / Math.max(daysLeft, 1);
 
-  return { total, printed, remaining, remMinutes, remFilament, workDays, daysLeft, eta, slackDays, status, perDayNeeded };
+  return { total, printed, remaining, remMinutes, remFilament, neededHours, availableHours, eta, slackHours, status, perDayNeeded };
 }
 
 export const fmtDur = (min: number) => {

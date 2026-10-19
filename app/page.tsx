@@ -124,7 +124,7 @@ function ProjectCard({
 }) {
   const s = summarize(project, items, settings);
   const pct = s.total ? Math.round((s.printed / s.total) * 100) : 0;
-  const slack = Math.abs(s.slackDays).toFixed(1);
+  const slack = fmtDur(Math.abs(s.slackHours) * 60);
 
   return (
     <div className="card">
@@ -155,7 +155,8 @@ function ProjectCard({
           />
           <span>Data alvo (editável)</span>
         </div>
-        <div className="stat"><b>{Math.max(Math.ceil(s.daysLeft), 0)} dias</b><span>Restantes até o prazo</span></div>
+        <div className="stat"><b>{fmtDur(s.availableHours * 60)}</b><span>Horas úteis disponíveis (por impressora)</span></div>
+        <div className="stat"><b>{fmtDur(s.neededHours * 60)}</b><span>Horas necessárias (por impressora)</span></div>
         <div className="stat"><b>{fmtDur(s.remMinutes)}</b><span>Impressão restante (total)</span></div>
         <div className="stat"><b>{s.remaining ? fmtDate(s.eta) : "—"}</b><span>Previsão de término</span></div>
         <div className="stat"><b>{(s.remFilament / 1000).toFixed(2)} kg</b><span>Filamento restante</span></div>
@@ -163,7 +164,7 @@ function ProjectCard({
       </div>
       {s.remaining > 0 && (
         <div className="sub">
-          {s.slackDays >= 0 ? `Folga de ${slack} dias em relação ao prazo.` : `Faltam ${slack} dias de produção para cumprir o prazo — considere mais impressoras ou horas/dia.`}
+          {s.slackHours >= 0 ? `Folga de ${slack} de impressão por impressora em relação ao prazo.` : `Faltam ${slack} de impressão por impressora para cumprir o prazo — considere mais impressoras ou horas/dia.`}
         </div>
       )}
 
