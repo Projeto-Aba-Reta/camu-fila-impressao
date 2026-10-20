@@ -177,11 +177,10 @@ function ProjectCard({
           {s.slackHours >= 0 ? `Folga de ${slack} de impressão por impressora em relação ao prazo.` : `Faltam ${slack} de impressão por impressora para cumprir o prazo — considere mais impressoras ou horas/dia.`}
         </div>
       )}
-      {s.modelDeadline && s.modelStart && (
+      {s.modelDeadline && (
         <div className="sub">
           Faltam {s.unreadyCount} modelo(s): para cumprir o prazo, todos precisam estar prontos até{" "}
-          <b>{fmtDate(s.modelDeadline)}</b>
-          {s.modelMinutes > 0 && <> (começando a modelar até {fmtDate(s.modelStart)})</>}.
+          <b>{fmtDate(s.modelDeadline)}</b>.
         </div>
       )}
       {s.status === "late" && (
@@ -215,7 +214,7 @@ function ProjectCard({
 }
 
 function NewItem({ projectId, run }: { projectId: string; run: Run }) {
-  const empty = { name: "", quantity: "", hours: "", minutes: "", filament: "", ready: true, done: "", modelMin: "" };
+  const empty = { name: "", quantity: "", hours: "", minutes: "", filament: "", ready: true, done: "" };
   const [f, setF] = useState(empty);
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
 
@@ -234,7 +233,6 @@ function NewItem({ projectId, run }: { projectId: string; run: Run }) {
         filament_g: Number(f.filament) || 0,
         model_ready: f.ready,
         models_done: f.ready ? 0 : Math.min(Math.max(Math.floor(Number(f.done)) || 0, 0), Number(f.quantity)),
-        model_minutes: f.ready ? 0 : Number(f.modelMin) || 0,
       })
     );
     setF(empty);
@@ -251,7 +249,6 @@ function NewItem({ projectId, run }: { projectId: string; run: Run }) {
       {!f.ready && (
         <>
           <label>Modelos feitos<input className="num" type="number" min={0} value={f.done} onChange={set("done")} /></label>
-          <label>Min p/ modelar cada<input className="num" type="number" min={0} value={f.modelMin} onChange={set("modelMin")} /></label>
         </>
       )}
       <button type="submit">Adicionar</button>
@@ -373,20 +370,6 @@ function ItemRow({ item: i, run }: { item: Item; run: Run }) {
                   onBlur={(e) => {
                     const d = Math.min(Math.max(Math.floor(Number(e.target.value)) || 0, 0), i.quantity);
                     if (d !== (i.models_done ?? 0)) save({ models_done: d });
-                  }}
-                />
-              </label>
-              <label>
-                Min/modelo
-                <input
-                  key={"mm" + i.model_minutes}
-                  className="num"
-                  type="number"
-                  min={0}
-                  defaultValue={i.model_minutes ?? 0}
-                  onBlur={(e) => {
-                    const v = Math.max(Number(e.target.value) || 0, 0);
-                    if (v !== (i.model_minutes ?? 0)) save({ model_minutes: v });
                   }}
                 />
               </label>

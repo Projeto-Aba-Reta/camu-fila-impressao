@@ -10,7 +10,6 @@ export type Item = {
   // sem model_ready (ou true) = todos os modelos prontos; false = só `models_done` modelos feitos
   model_ready?: boolean;
   models_done?: number;
-  model_minutes?: number; // tempo para modelar cada modelo que falta
 };
 export type Project = { id: string; name: string; target_date: string };
 
@@ -27,12 +26,10 @@ export function summarize(p: Project, items: Item[], s: Settings, now = new Date
   // cada peça restante precisa de um modelo; peças sem modelo só imprimem depois de modelar
   const unready = (i: Item) =>
     i.model_ready === false ? Math.min(left(i), Math.max(i.quantity - (i.models_done ?? 0), 0)) : 0;
-  const modelMinutes = items.reduce((a, i) => a + unready(i) * (i.model_minutes ?? 0), 0);
   const unreadyPrintMinutes = items.reduce((a, i) => a + unready(i) * i.print_minutes, 0);
 
   // horas de impressão por impressora (o trabalho é dividido entre as impressoras)
-  // a modelagem é sequencial e precede a impressão das peças sem modelo; as com modelo imprimem enquanto isso
-  const neededHours = Math.max(remMinutes / 60 / s.printers, modelMinutes / 60 + unreadyPrintMinutes / 60 / s.printers);
+  const neededHours = remMinutes / 60 / s.printers;
   const workDays = neededHours / s.hours_per_day;
 
   // o dia da data alvo não conta como dia de produção: o prazo vence no início dele
@@ -54,8 +51,6 @@ export function summarize(p: Project, items: Item[], s: Settings, now = new Date
     unreadyCount > 0
       ? new Date(target.getTime() - (unreadyPrintMinutes / 60 / s.printers / s.hours_per_day) * 86400000)
       : null;
-  // quando a modelagem precisa começar para entregar os modelos nessa data
-  const modelStart = modelDeadline && new Date(modelDeadline.getTime() - (modelMinutes / 60 / s.hours_per_day) * 86400000);
 
   const perDayNeeded = remaining / Math.max(daysLeft, 1);
 
@@ -65,22 +60,19 @@ export function summarize(p: Project, items: Item[], s: Settings, now = new Date
   const missing: { item: Item; qty: number }[] = [];
   const plan: { item: Item; fit: number; qty: number }[] = [];
   if (status === "late") {
-    let modelBudget = availableHours * 60; // minutos de modelagem disponíveis até o prazo
     const fitByItem = new Map<string, number>();
     // peças com modelo e sem modelo como entradas separadas; as mais rápidas primeiro, as com modelo à frente
     const entries = items
       .filter((i) => left(i) > 0)
       .flatMap((i) => [
-        { i, n: left(i) - unready(i), mm: 0 },
-        { i, n: unready(i), mm: i.model_minutes ?? 0 },
+        { i, n: left(i) - unready(i) },
+        { i, n: unready(i) },
       ])
       .filter((e) => e.n > 0)
-      .sort((a, b) => a.i.print_minutes - b.i.print_minutes || a.mm - b.mm);
-    for (const { i, n, mm } of entries) {
+      .sort((a, b) => a.i.print_minutes - b.i.print_minutes);
+    for (const { i, n } of entries) {
       let fit = i.print_minutes > 0 ? Math.min(n, Math.floor(capacity / i.print_minutes)) : n;
-      if (mm > 0) fit = Math.min(fit, Math.floor(modelBudget / mm));
       capacity -= fit * i.print_minutes;
-      modelBudget -= fit * mm;
       fitByItem.set(i.id, (fitByItem.get(i.id) ?? 0) + fit);
     }
     for (const i of items.filter((i) => left(i) > 0)) {
@@ -91,7 +83,7 @@ export function summarize(p: Project, items: Item[], s: Settings, now = new Date
   }
   const missingTotal = missing.reduce((a, m) => a + m.qty, 0);
 
-  return { total, printed, remaining, remMinutes, modelMinutes, unreadyCount, modelDeadline, modelStart, remFilament, neededHours, availableHours, eta, slackHours, status, perDayNeeded, missing, missingTotal, plan };
+  return { total, printed, remaining, remMinutes, unreadyCount, modelDeadline, remFilament, neededHours, availableHours, eta, slackHours, status, perDayNeeded, missing, missingTotal, plan };
 }
 
 export const fmtDur = (min: number) => {
