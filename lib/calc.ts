@@ -39,7 +39,23 @@ export function summarize(p: Project, items: Item[], s: Settings, now = new Date
 
   const perDayNeeded = remaining / Math.max(daysLeft, 1);
 
-  return { total, printed, remaining, remMinutes, remFilament, neededHours, availableHours, eta, slackHours, status, perDayNeeded };
+  // em caso de atraso: maximiza o nº de peças feitas no tempo disponível
+  // (prioriza as mais rápidas) e devolve o que fica faltando por item
+  let capacity = availableHours * s.printers * 60;
+  const missing: { item: Item; qty: number }[] = [];
+  const plan: { item: Item; fit: number; qty: number }[] = [];
+  if (status === "late") {
+    const byTime = items.filter((i) => left(i) > 0).sort((a, b) => a.print_minutes - b.print_minutes);
+    for (const i of byTime) {
+      const fit = i.print_minutes > 0 ? Math.min(left(i), Math.floor(capacity / i.print_minutes)) : left(i);
+      capacity -= fit * i.print_minutes;
+      plan.push({ item: i, fit, qty: left(i) - fit });
+      if (left(i) - fit > 0) missing.push({ item: i, qty: left(i) - fit });
+    }
+  }
+  const missingTotal = missing.reduce((a, m) => a + m.qty, 0);
+
+  return { total, printed, remaining, remMinutes, remFilament, neededHours, availableHours, eta, slackHours, status, perDayNeeded, missing, missingTotal, plan };
 }
 
 export const fmtDur = (min: number) => {

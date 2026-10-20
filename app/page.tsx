@@ -177,6 +177,19 @@ function ProjectCard({
           {s.slackHours >= 0 ? `Folga de ${slack} de impressão por impressora em relação ao prazo.` : `Faltam ${slack} de impressão por impressora para cumprir o prazo — considere mais impressoras ou horas/dia.`}
         </div>
       )}
+      {s.status === "late" && (
+        <div className="sub">
+          No prazo, na melhor distribuição, vão faltar {s.missingTotal} peça(s).
+          <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
+            {s.plan.map((p) => (
+              <li key={p.item.id}>
+                {p.item.name}: imprime {p.fit} de {p.fit + p.qty} restantes
+                {p.qty > 0 ? ` · faltam ${p.qty}` : " · completo"}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <table>
         <thead>
