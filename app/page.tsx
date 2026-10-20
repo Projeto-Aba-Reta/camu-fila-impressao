@@ -354,31 +354,35 @@ function ItemRow({ item: i, run }: { item: Item; run: Run }) {
           </label>
           {i.model_ready === false && (
             <>
-              <input
-                key={"md" + i.models_done}
-                className="num"
-                type="number"
-                min={0}
-                max={i.quantity}
-                title="Modelos feitos"
-                defaultValue={i.models_done ?? 0}
-                onBlur={(e) => {
-                  const d = Math.min(Math.max(Math.floor(Number(e.target.value)) || 0, 0), i.quantity);
-                  if (d !== (i.models_done ?? 0)) save({ models_done: d });
-                }}
-              />
-              <input
-                key={"mm" + i.model_minutes}
-                className="num"
-                type="number"
-                min={0}
-                title="Min para modelar cada"
-                defaultValue={i.model_minutes ?? 0}
-                onBlur={(e) => {
-                  const v = Math.max(Number(e.target.value) || 0, 0);
-                  if (v !== (i.model_minutes ?? 0)) save({ model_minutes: v });
-                }}
-              />
+              <label>
+                Feitos
+                <input
+                  key={"md" + i.models_done}
+                  className="num"
+                  type="number"
+                  min={0}
+                  max={i.quantity}
+                  defaultValue={i.models_done ?? 0}
+                  onBlur={(e) => {
+                    const d = Math.min(Math.max(Math.floor(Number(e.target.value)) || 0, 0), i.quantity);
+                    if (d !== (i.models_done ?? 0)) save({ models_done: d });
+                  }}
+                />
+              </label>
+              <label>
+                Min/modelo
+                <input
+                  key={"mm" + i.model_minutes}
+                  className="num"
+                  type="number"
+                  min={0}
+                  defaultValue={i.model_minutes ?? 0}
+                  onBlur={(e) => {
+                    const v = Math.max(Number(e.target.value) || 0, 0);
+                    if (v !== (i.model_minutes ?? 0)) save({ model_minutes: v });
+                  }}
+                />
+              </label>
             </>
           )}
         </div>
