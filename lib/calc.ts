@@ -7,6 +7,10 @@ export type Item = {
   printed: number;
   print_minutes: number;
   filament_g: number;
+  // sem model_ready (ou true) = todos os modelos prontos; false = só `models_done` modelos feitos
+  model_ready?: boolean;
+  models_done?: number;
+  model_minutes?: number; // tempo para modelar cada modelo que falta
 };
 export type Project = { id: string; name: string; target_date: string };
 
@@ -20,8 +24,15 @@ export function summarize(p: Project, items: Item[], s: Settings, now = new Date
   const remMinutes = items.reduce((a, i) => a + left(i) * i.print_minutes, 0);
   const remFilament = items.reduce((a, i) => a + left(i) * i.filament_g, 0);
 
+  // cada peça restante precisa de um modelo; peças sem modelo só imprimem depois de modelar
+  const unready = (i: Item) =>
+    i.model_ready === false ? Math.min(left(i), Math.max(i.quantity - (i.models_done ?? 0), 0)) : 0;
+  const modelMinutes = items.reduce((a, i) => a + unready(i) * (i.model_minutes ?? 0), 0);
+  const unreadyPrintMinutes = items.reduce((a, i) => a + unready(i) * i.print_minutes, 0);
+
   // horas de impressão por impressora (o trabalho é dividido entre as impressoras)
-  const neededHours = remMinutes / 60 / s.printers;
+  // a modelagem é sequencial e precede a impressão das peças sem modelo; as com modelo imprimem enquanto isso
+  const neededHours = Math.max(remMinutes / 60 / s.printers, modelMinutes / 60 + unreadyPrintMinutes / 60 / s.printers);
   const workDays = neededHours / s.hours_per_day;
 
   // o dia da data alvo não conta como dia de produção: o prazo vence no início dele
@@ -45,17 +56,33 @@ export function summarize(p: Project, items: Item[], s: Settings, now = new Date
   const missing: { item: Item; qty: number }[] = [];
   const plan: { item: Item; fit: number; qty: number }[] = [];
   if (status === "late") {
-    const byTime = items.filter((i) => left(i) > 0).sort((a, b) => a.print_minutes - b.print_minutes);
-    for (const i of byTime) {
-      const fit = i.print_minutes > 0 ? Math.min(left(i), Math.floor(capacity / i.print_minutes)) : left(i);
+    let modelBudget = availableHours * 60; // minutos de modelagem disponíveis até o prazo
+    const fitByItem = new Map<string, number>();
+    // peças com modelo e sem modelo como entradas separadas; as mais rápidas primeiro, as com modelo à frente
+    const entries = items
+      .filter((i) => left(i) > 0)
+      .flatMap((i) => [
+        { i, n: left(i) - unready(i), mm: 0 },
+        { i, n: unready(i), mm: i.model_minutes ?? 0 },
+      ])
+      .filter((e) => e.n > 0)
+      .sort((a, b) => a.i.print_minutes - b.i.print_minutes || a.mm - b.mm);
+    for (const { i, n, mm } of entries) {
+      let fit = i.print_minutes > 0 ? Math.min(n, Math.floor(capacity / i.print_minutes)) : n;
+      if (mm > 0) fit = Math.min(fit, Math.floor(modelBudget / mm));
       capacity -= fit * i.print_minutes;
+      modelBudget -= fit * mm;
+      fitByItem.set(i.id, (fitByItem.get(i.id) ?? 0) + fit);
+    }
+    for (const i of items.filter((i) => left(i) > 0)) {
+      const fit = fitByItem.get(i.id) ?? 0;
       plan.push({ item: i, fit, qty: left(i) - fit });
       if (left(i) - fit > 0) missing.push({ item: i, qty: left(i) - fit });
     }
   }
   const missingTotal = missing.reduce((a, m) => a + m.qty, 0);
 
-  return { total, printed, remaining, remMinutes, remFilament, neededHours, availableHours, eta, slackHours, status, perDayNeeded, missing, missingTotal, plan };
+  return { total, printed, remaining, remMinutes, modelMinutes, remFilament, neededHours, availableHours, eta, slackHours, status, perDayNeeded, missing, missingTotal, plan };
 }
 
 export const fmtDur = (min: number) => {

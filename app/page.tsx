@@ -193,7 +193,7 @@ function ProjectCard({
 
       <table>
         <thead>
-          <tr><th>Item</th><th>Feitas</th><th>Qtd</th><th>Tempo/un (h · min)</th><th>Filamento/un (g)</th><th></th></tr>
+          <tr><th>Item</th><th>Feitas</th><th>Qtd</th><th>Tempo/un (h · min)</th><th>Filamento/un (g)</th><th>Modelo</th><th></th></tr>
         </thead>
         <tbody>
           {items.map((i) => (
@@ -208,7 +208,8 @@ function ProjectCard({
 }
 
 function NewItem({ projectId, run }: { projectId: string; run: Run }) {
-  const [f, setF] = useState({ name: "", quantity: "", hours: "", minutes: "", filament: "" });
+  const empty = { name: "", quantity: "", hours: "", minutes: "", filament: "", ready: true, done: "", modelMin: "" };
+  const [f, setF] = useState(empty);
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
 
   const submit = (e: React.FormEvent) => {
@@ -224,9 +225,12 @@ function NewItem({ projectId, run }: { projectId: string; run: Run }) {
         quantity: Number(f.quantity),
         print_minutes,
         filament_g: Number(f.filament) || 0,
+        model_ready: f.ready,
+        models_done: f.ready ? 0 : Math.min(Math.max(Math.floor(Number(f.done)) || 0, 0), Number(f.quantity)),
+        model_minutes: f.ready ? 0 : Number(f.modelMin) || 0,
       })
     );
-    setF({ name: "", quantity: "", hours: "", minutes: "", filament: "" });
+    setF(empty);
   };
 
   return (
@@ -236,6 +240,13 @@ function NewItem({ projectId, run }: { projectId: string; run: Run }) {
       <label>Horas<input className="num" type="number" min={0} value={f.hours} onChange={set("hours")} /></label>
       <label>Min<input className="num" type="number" min={0} max={59} value={f.minutes} onChange={set("minutes")} /></label>
       <label>Filamento (g)<input className="num" type="number" min={0} step="0.1" value={f.filament} onChange={set("filament")} /></label>
+      <label><span>Modelo pronto</span><input type="checkbox" checked={f.ready} onChange={(e) => setF({ ...f, ready: e.target.checked })} /></label>
+      {!f.ready && (
+        <>
+          <label>Modelos feitos<input className="num" type="number" min={0} value={f.done} onChange={set("done")} /></label>
+          <label>Min p/ modelar cada<input className="num" type="number" min={0} value={f.modelMin} onChange={set("modelMin")} /></label>
+        </>
+      )}
       <button type="submit">Adicionar</button>
     </form>
   );
@@ -330,6 +341,47 @@ function ItemRow({ item: i, run }: { item: Item; run: Run }) {
             if (f >= 0 && f !== i.filament_g) save({ filament_g: f });
           }}
         />
+      </td>
+      <td>
+        <div className="row" style={{ flexWrap: "nowrap" }}>
+          <label>
+            <input
+              type="checkbox"
+              checked={i.model_ready !== false}
+              onChange={(e) => save(e.target.checked ? { model_ready: true } : { model_ready: false, models_done: i.models_done ?? 0 })}
+            />{" "}
+            Pronto
+          </label>
+          {i.model_ready === false && (
+            <>
+              <input
+                key={"md" + i.models_done}
+                className="num"
+                type="number"
+                min={0}
+                max={i.quantity}
+                title="Modelos feitos"
+                defaultValue={i.models_done ?? 0}
+                onBlur={(e) => {
+                  const d = Math.min(Math.max(Math.floor(Number(e.target.value)) || 0, 0), i.quantity);
+                  if (d !== (i.models_done ?? 0)) save({ models_done: d });
+                }}
+              />
+              <input
+                key={"mm" + i.model_minutes}
+                className="num"
+                type="number"
+                min={0}
+                title="Min para modelar cada"
+                defaultValue={i.model_minutes ?? 0}
+                onBlur={(e) => {
+                  const v = Math.max(Number(e.target.value) || 0, 0);
+                  if (v !== (i.model_minutes ?? 0)) save({ model_minutes: v });
+                }}
+              />
+            </>
+          )}
+        </div>
       </td>
       <td><button className="ghost sm" onClick={() => run(deleteDoc(ref))}>×</button></td>
     </tr>
