@@ -28,7 +28,7 @@ export default function PlanView({ projects, items, settings }: { projects: Proj
           </tbody>
         </table>
         <div className="sub" style={{ margin: "8px 0 0" }}>
-          Ordem: projeto de prazo mais próximo primeiro; peças com modelo pronto antes das sem modelo. Capacidade: {settings.printers} impressora(s) × {settings.hours_per_day}h/dia.
+          Um item por dia (mescla só se for preciso para cumprir o prazo); peças com modelo pronto primeiro, as sem modelo no fim do prazo. Capacidade: {settings.printers} impressora(s) × {settings.hours_per_day}h/dia.
         </div>
       </div>
 
@@ -38,7 +38,7 @@ export default function PlanView({ projects, items, settings }: { projects: Proj
           <div className="card" key={day.date.toISOString()}>
             <div className="head">
               <h2>{fmtDay(day.date)}</h2>
-              <span className="sub" style={{ margin: 0 }}>{fmtDur(day.minutes)} de {fmtDur(day.capacity)} ({pct}%)</span>
+              <span className="sub" style={{ margin: 0 }}>{day.mixed && <span className="badge risk">mescla itens</span>} {fmtDur(day.minutes)} de {fmtDur(day.capacity)} ({pct}%)</span>
             </div>
             <div className="bar"><div style={{ width: `${Math.min(pct, 100)}%` }} /></div>
             <table>
@@ -49,7 +49,7 @@ export default function PlanView({ projects, items, settings }: { projects: Proj
                     <td>{e.item.name}</td>
                     <td>{e.qty}×</td>
                     <td>{fmtDur(e.minutes)}</td>
-                    <td>{e.needsModel && <span className="badge risk">modelo até {fmtDate(day.date)}</span>}</td>
+                    <td>{e.modelBy && <span className="badge risk">modelo até {fmtDate(e.modelBy)}</span>}</td>
                   </tr>
                 ))}
               </tbody>
