@@ -134,6 +134,16 @@ function ProjectCard({
           <span className={`badge ${s.status}`}>{STATUS_LABEL[s.status]}</span>
           <button
             className="ghost sm"
+            onClick={() =>
+              navigator.clipboard
+                .writeText(`${location.origin}/cliente/${project.id}`)
+                .then(() => alert("Link do cliente copiado!"))
+            }
+          >
+            Link do cliente
+          </button>
+          <button
+            className="ghost sm"
             onClick={() => confirm(`Excluir "${project.name}"?`) && run(deleteProject(project.id))}
           >
             Excluir
