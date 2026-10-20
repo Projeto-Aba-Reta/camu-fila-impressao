@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { addDoc, collection, deleteDoc, doc, increment, onSnapshot, setDoc, updateDoc, writeBatch, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import PlanView from "./plan";
 import { fmtDur, summarize, type Item, type Project, type Settings, type Status } from "@/lib/calc";
 
 const STATUS_LABEL: Record<Status, string> = {
@@ -21,6 +22,7 @@ export default function Page() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [error, setError] = useState("");
+  const [tab, setTab] = useState<"projetos" | "plano">("projetos");
 
   // atualização em tempo real via Firestore
   useEffect(() => {
@@ -60,9 +62,16 @@ export default function Page() {
 
       {error && <div className="err">{error}</div>}
 
+      <div className="row" style={{ marginBottom: 16 }}>
+        <button className={tab === "projetos" ? "" : "ghost"} onClick={() => setTab("projetos")}>Projetos</button>
+        <button className={tab === "plano" ? "" : "ghost"} onClick={() => setTab("plano")}>Planejamento</button>
+      </div>
+
       <SettingsCard settings={settings} onSave={saveSettings} />
 
-      {projects.map((p) => (
+      {tab === "plano" && <PlanView projects={projects} items={items} settings={settings} />}
+
+      {tab === "projetos" && projects.map((p) => (
         <ProjectCard
           key={p.id}
           project={p}
@@ -71,9 +80,9 @@ export default function Page() {
           run={run}
         />
       ))}
-      {projects.length === 0 && !error && <div className="card">Nenhum projeto ainda. Crie um abaixo.</div>}
+      {tab === "projetos" && projects.length === 0 && !error && <div className="card">Nenhum projeto ainda. Crie um abaixo.</div>}
 
-      <NewProject run={run} />
+      {tab === "projetos" && <NewProject run={run} />}
     </main>
   );
 }
