@@ -48,6 +48,15 @@ export function summarize(p: Project, items: Item[], s: Settings, now = new Date
   else if (slackHours < 0) status = "late";
   else if (slackHours < Math.max(s.hours_per_day, neededHours * 0.2)) status = "risk";
 
+  // data limite para ter todos os modelos: sobra o tempo de imprimir as peças sem modelo antes do prazo
+  const unreadyCount = items.reduce((a, i) => a + unready(i), 0);
+  const modelDeadline =
+    unreadyCount > 0
+      ? new Date(target.getTime() - (unreadyPrintMinutes / 60 / s.printers / s.hours_per_day) * 86400000)
+      : null;
+  // quando a modelagem precisa começar para entregar os modelos nessa data
+  const modelStart = modelDeadline && new Date(modelDeadline.getTime() - (modelMinutes / 60 / s.hours_per_day) * 86400000);
+
   const perDayNeeded = remaining / Math.max(daysLeft, 1);
 
   // em caso de atraso: maximiza o nº de peças feitas no tempo disponível
@@ -82,7 +91,7 @@ export function summarize(p: Project, items: Item[], s: Settings, now = new Date
   }
   const missingTotal = missing.reduce((a, m) => a + m.qty, 0);
 
-  return { total, printed, remaining, remMinutes, modelMinutes, remFilament, neededHours, availableHours, eta, slackHours, status, perDayNeeded, missing, missingTotal, plan };
+  return { total, printed, remaining, remMinutes, modelMinutes, unreadyCount, modelDeadline, modelStart, remFilament, neededHours, availableHours, eta, slackHours, status, perDayNeeded, missing, missingTotal, plan };
 }
 
 export const fmtDur = (min: number) => {

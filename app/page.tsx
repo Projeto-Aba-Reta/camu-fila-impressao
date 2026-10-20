@@ -177,6 +177,13 @@ function ProjectCard({
           {s.slackHours >= 0 ? `Folga de ${slack} de impressão por impressora em relação ao prazo.` : `Faltam ${slack} de impressão por impressora para cumprir o prazo — considere mais impressoras ou horas/dia.`}
         </div>
       )}
+      {s.modelDeadline && s.modelStart && (
+        <div className="sub">
+          Faltam {s.unreadyCount} modelo(s): para cumprir o prazo, todos precisam estar prontos até{" "}
+          <b>{fmtDate(s.modelDeadline)}</b>
+          {s.modelMinutes > 0 && <> (começando a modelar até {fmtDate(s.modelStart)})</>}.
+        </div>
+      )}
       {s.status === "late" && (
         <div className="sub">
           No prazo, na melhor distribuição, vão faltar {s.missingTotal} peça(s).
